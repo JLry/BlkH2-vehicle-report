@@ -1,2 +1,4 @@
 # BlkH2-vehicle-report
 Weekly vehicle report form
+
+"Weekly Vehicle Report Form. Use this form to complete the weekly vehicle inspection report. How to use. Open the vehicle report form on your phone, enter week of driver and mileage, for each inspection item select yes, no, or other and add details when needed, add any necessary information under additional comments maintenance needed, add photos using take photo or choose existing photo, enter your name or signature information, select create PDF and email to create the completed report as a PDF or use save PDF to save to your phone, review the PDF before sending it, email or otherwise submit the completed PDF as required by Blackwater. The completed report is saved as a PDF so the submitted copy cannot be edited as a form after it's been created.
