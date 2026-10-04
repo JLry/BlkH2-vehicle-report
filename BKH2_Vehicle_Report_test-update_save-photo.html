@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weekly Vehicle Report</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:7px;font-family:Arial,sans-serif;background:#f2f3f5;color:#111827}
+.card{max-width:680px;margin:auto;background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.10)}
+h1{text-align:center;font-size:23px;margin:2px 0}.sub{text-align:center;color:#6b7280;font-size:12px;margin-bottom:15px}
+label{display:block;font-weight:700;font-size:14px;margin:10px 0 5px}
+input,textarea,select{width:100%;border:1px solid #9ca3af;border-radius:9px;padding:11px;font-size:16px;background:white}
+textarea{min-height:70px;resize:vertical}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.section{font-size:17px;font-weight:700;margin:18px 0 7px}
+.item{border:1px solid #d1d5db;border-radius:11px;padding:10px;margin:8px 0}
+.item-title{font-weight:700;font-size:15px;margin-bottom:8px}
+.choices{display:flex;gap:7px;margin-bottom:8px}
+.choice{flex:1;padding:11px 4px;border:2px solid #9ca3af;border-radius:9px;text-align:center;font-weight:700;font-size:14px;background:#fafafa;touch-action:manipulation;user-select:none}
+.choice.selected{border-color:#111827;background:#d1d5db}
+button{width:100%;border:0;border-radius:10px;padding:13px;font-size:16px;font-weight:700;margin-top:9px;cursor:pointer;touch-action:manipulation}
+.tabs{display:flex;gap:7px;margin-top:14px}.tab{flex:1;padding:11px;border:2px solid #9ca3af;border-radius:9px;background:#fafafa;font-weight:700}.tab.active{background:#111827;color:#fff;border-color:#111827}
+.panel{display:none}.panel.active{display:block}
+.photo-card,.pending-photo{border:1px solid #d1d5db;border-radius:11px;padding:10px;margin:9px 0}
+.photo-preview{width:100%;max-height:260px;object-fit:contain;border-radius:8px;background:#f3f4f6;margin-bottom:8px}
+.photo-meta{font-size:13px;font-weight:700;margin-bottom:6px}
+.remove-photo{background:#fee2e2;color:#991b1b}
+.primary{background:#111827;color:white}.secondary{background:#e5e7eb;color:#111827}
+.status{text-align:center;font-size:13px;color:#374151;margin-top:9px;min-height:18px}
+.hint{font-size:11px;color:#6b7280;margin-top:7px}
+.photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pending-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.save-photo{background:#111827;color:#fff}.cancel-photo{background:#e5e7eb;color:#111827}
+@media(max-width:480px){body{padding:5px}.card{padding:11px}.grid{grid-template-columns:1fr}.photo-actions,.pending-actions{grid-template-columns:1fr}}
+.camera-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;padding:14px;overflow:auto}
+.camera-box{max-width:680px;margin:auto;background:#111827;border-radius:14px;padding:12px;color:white}
+.camera-preview{width:100%;max-height:70vh;object-fit:contain;background:#000;border-radius:10px}
+.camera-buttons{display:flex;gap:8px}.camera-buttons button{flex:1}
+.camera-status{text-align:center;font-size:14px;margin:8px 0}
+</style>
+</head>
+<body>
+<div id="cameraModal" class="camera-modal">
+  <div class="camera-box">
+    <div style="font-size:18px;font-weight:700;text-align:center">Take Photo</div>
+    <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+    <div id="cameraStatus" class="camera-status">Starting rear camera…</div>
+    <div class="camera-buttons">
+      <button type="button" class="primary" onclick="takeCameraPhoto()">📸 Capture Photo</button>
+      <button type="button" class="secondary" onclick="closeCamera()">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="card">
+<h1>WEEKLY VEHICLE REPORT</h1>
+<div class="sub">Complete once each week • Report safety or maintenance issues promptly</div>
+<div class="grid">
+<div><label for="week">Week Of</label><input id="week" type="date"></div>
+<div><label for="mileage">Mileage</label><input id="mileage" type="number" inputmode="numeric" placeholder="Current mileage"></div>
+</div>
+<label for="driver">Driver</label>
+<input id="driver" type="text" placeholder="Driver name">
+<div class="tabs"><button type="button" class="tab active" id="inspectionTab" onclick="showTab('inspection')">Inspection</button><button type="button" class="tab" id="photosTab" onclick="showTab('photos')">Photos <span id="photoCount">(0)</span></button></div>
+<div id="inspectionPanel" class="panel active"><div class="section">Weekly Inspection</div><div id="items"></div></div>
+<div id="photosPanel" class="panel">
+<div class="section">Photos / Documentation</div>
+<div class="hint">Choose or take a photo, select the inspection item, add a description, then tap Save Photo. Only saved photos are included in the final PDF.</div>
+<div class="photo-actions">
+<button type="button" class="secondary" onclick="takePhotoWorkflow()">📷 Take Photo</button>
+<button type="button" class="secondary" onclick="openGallery()">🖼️ Choose Existing Photo</button>
+</div>
+<div id="photoHelp" class="hint" style="display:none;border:1px solid #d1d5db;border-radius:9px;padding:10px;background:#f9fafb">
+<strong>After taking the picture:</strong> if your phone shows a Save/Done button, tap it and return here. If the picture does not appear automatically, tap <strong>Choose Existing Photo</strong> and select the picture you just took.
+</div>
+<input id="cameraInput" type="file" accept="image/*" capture="environment" onchange="cameraPhotoReturned(this.files)" style="display:none">
+<input id="galleryInput" type="file" accept="image/*" multiple onchange="addPhotos(this.files)" style="display:none">
+<div id="pendingPhotoList"></div>
+<div id="photoList"></div>
+</div>
+<div class="section">Additional Comments / Maintenance Needed</div>
+<textarea id="additional" placeholder="Example: The check engine light is on. It needs to be scheduled for a tech to look at."></textarea>
+<label for="signature">Driver Signature / Name</label>
+<input id="signature" type="text" placeholder="Type your name">
+<button class="primary" onclick="createAndEmail()">Create PDF &amp; Email</button>
+<button class="secondary" onclick="savePDF()">Save PDF</button>
+<button class="secondary" onclick="clearForm()">Clear Form</button>
+<div id="status" class="status"></div>
+<div class="hint">The PDF is generated directly from the completed form. It contains no fillable fields, so the emailed copy is flattened and not editable as a form.</div>
+</div>
+<script>
+const items=[
+["Lights","lights"],["Tires","tires"],["Fluids","fluids"],["Belts","belts"],
+["Brakes","brakes"],["Windshield","windshield"],["Added Accessories","accessories"]
+];
+const selections={};
+const photos=[];
+const pendingPhotos=[];
+items.forEach(([title,key])=>{
+ selections[key]="";
+ const d=document.createElement("div");
+ d.className="item";
+ d.innerHTML=`<div class="item-title">${title}</div>
+ <div class="choices">
+  <div class="choice" id="${key}_yes" onclick="selectStatus('${key}','Yes')">YES</div>
+  <div class="choice" id="${key}_no" onclick="selectStatus('${key}','No')">NO</div>
+  <div class="choice" id="${key}_other" onclick="selectStatus('${key}','Other')">OTHER</div>
+ </div>
+ <textarea id="${key}_details" placeholder="Details / notes"></textarea>`;
+ document.getElementById("items").appendChild(d);
+});
+function showTab(tab){
+ document.getElementById("inspectionPanel").classList.toggle("active",tab==="inspection");
+ document.getElementById("photosPanel").classList.toggle("active",tab==="photos");
+ document.getElementById("inspectionTab").classList.toggle("active",tab==="inspection");
+ document.getElementById("photosTab").classList.toggle("active",tab==="photos");
+}
+let cameraStream=null;
+async function openCamera(){
+ const modal=document.getElementById("cameraModal");
+ const video=document.getElementById("cameraPreview");
+ const status=document.getElementById("cameraStatus");
+ if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+  try{
+   cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
+   video.srcObject=cameraStream;
+   modal.style.display="block";
+   status.textContent="Rear camera ready. Tap Capture Photo.";
+   return;
+  }catch(err){
+   status.textContent="Camera access was not available. Opening the phone camera instead…";
+  }
+ }
+ document.getElementById("cameraInput").click();
+}
+function takeCameraPhoto(){
+ const video=document.getElementById("cameraPreview");
+ if(!cameraStream || !video.videoWidth){setStatus("Camera is not ready yet.");return;}
+ const canvas=document.createElement("canvas");
+ canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+ const ctx=canvas.getContext("2d");ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ stagePhoto(canvas.toDataURL("image/jpeg",0.88));
+ closeCamera();
+}
+function closeCamera(){
+ if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+ const video=document.getElementById("cameraPreview");
+ video.srcObject=null;
+ document.getElementById("cameraModal").style.display="none";
+}
+function takePhotoWorkflow(){
+ const help=document.getElementById("photoHelp");
+ help.style.display="block";
+ setStatus("Opening your phone camera. Take the picture, then tap Save/Done if your camera shows it.");
+ const input=document.getElementById("cameraInput");
+ input.value="";
+ input.click();
+}
+function cameraPhotoReturned(files){
+ if(files && files.length){addPhotos(files);return;}
+ setStatus("The camera did not return the photo. Tap Choose Existing Photo and select the picture you just took.");
+ document.getElementById("photoHelp").style.display="block";
+}
+function openGallery(){document.getElementById("galleryInput").click();}
+function addPhotos(files){
+ const selected=[...files].filter(file=>file && file.type.startsWith("image/"));
+ selected.forEach(file=>{
+  const reader=new FileReader();
+  reader.onload=e=>{
+   if(e.target.result)stagePhoto(e.target.result);
+  };
+  reader.onerror=()=>setStatus("Could not load that photo. Please try again.");
+  reader.readAsDataURL(file);
+ });
+ const camera=document.getElementById("cameraInput");
+ const gallery=document.getElementById("galleryInput");
+ if(camera)camera.value="";
+ if(gallery)gallery.value="";
+}
+function stagePhoto(src){
+ pendingPhotos.push({src:src,category:"Lights",description:""});
+ renderPendingPhotos();
+ setStatus("Photo selected. Choose the inspection item, add a description, then tap Save Photo.");
+ showTab("photos");
+}
+function renderPendingPhotos(){
+ const list=document.getElementById("pendingPhotoList");
+ list.innerHTML="";
+ pendingPhotos.forEach((p,i)=>{
+  const d=document.createElement("div");
+  d.className="pending-photo";
+  d.innerHTML=`<div class="photo-meta">Photo ready to save</div>
+  <img class="photo-preview" src="${p.src}">
+  <label>Inspection Item</label>
+  <select id="pending_cat_${i}" onchange="pendingPhotos[${i}].category=this.value">
+  ${items.map(x=>`<option ${x[0]===p.category?"selected":""}>${x[0]}</option>`).join("")}</select>
+  <label>Description</label>
+  <textarea id="pending_desc_${i}" placeholder="Example: Left headlight housing is cracked." oninput="pendingPhotos[${i}].description=this.value">${p.description}</textarea>
+  <div class="pending-actions">
+   <button type="button" class="save-photo" onclick="savePendingPhoto(${i})">Save Photo</button>
+   <button type="button" class="cancel-photo" onclick="removePendingPhoto(${i})">Remove Photo</button>
+  </div>`;
+  list.appendChild(d);
+ });
+}
+function savePendingPhoto(i){
+ const p=pendingPhotos[i];
+ if(!p)return;
+ const cat=document.getElementById("pending_cat_"+i);
+ const desc=document.getElementById("pending_desc_"+i);
+ p.category=cat?cat.value:p.category;
+ p.description=desc?desc.value:p.description;
+ photos.push({src:p.src,category:p.category,description:p.description});
+ pendingPhotos.splice(i,1);
+ renderPendingPhotos();
+ renderPhotos();
+ setStatus("Photo saved to report.");
+}
+function removePendingPhoto(i){
+ pendingPhotos.splice(i,1);
+ renderPendingPhotos();
+ setStatus("Photo removed.");
+}
+function renderPhotos(){
+ const list=document.getElementById("photoList");
+ list.innerHTML="";
+ photos.forEach((p,i)=>{
+  const d=document.createElement("div");d.className="photo-card";
+  d.innerHTML=`<img class="photo-preview" src="${p.src}">
+  <div class="photo-meta">Saved Photo ${i+1}</div>
+  <label>Inspection Item</label>
+  <select id="photo_cat_${i}" onchange="photos[${i}].category=this.value">${items.map(x=>`<option ${x[0]===p.category?"selected":""}>${x[0]}</option>`).join("")}</select>
+  <label>Description</label>
+  <textarea id="photo_desc_${i}" placeholder="Example: Left headlight housing is cracked." oninput="photos[${i}].description=this.value">${p.description}</textarea>
+  <button type="button" class="remove-photo" onclick="removePhoto(${i})">Remove Photo</button>`;
+  list.appendChild(d);
+ });
+ document.getElementById("photoCount").textContent=`(${photos.length})`;
+}
+function removePhoto(i){photos.splice(i,1);renderPhotos();}
+function selectStatus(key,value){
+ selections[key]=value;
+ ["yes","no","other"].forEach(x=>document.getElementById(key+"_"+x).classList.remove("selected"));
+ document.getElementById(key+"_"+value.toLowerCase()).classList.add("selected");
+}
+function v(id){return document.getElementById(id).value}
+function setStatus(s){document.getElementById("status").textContent=s}
+function filename(d){return "BkH2 Vehicle Report.pdf"}
+function displayDate(s){if(!s)return "";let p=s.split("-");return p.length===3?p[1]+"/"+p[2]+"/"+p[0]:s}
+function getData(){
+ return {
+  week:v("week"),mileage:v("mileage"),driver:v("driver"),
+  additional:v("additional"),signature:v("signature"),
+  items:items.map(([title,key])=>({title,status:selections[key]||"Not selected",details:v(key+"_details")})),
+  photos:photos.map(p=>({src:p.src,category:p.category,description:p.description}))
+ };
+}
+function pdfEscape(s){return String(s).replace(/\/g,"\\").replace(/\(/g,"\(").replace(/\)/g,"\)").replace(//g,"").replace(/
+/g," ");}
+function wrap(text,max){
+ text=String(text||"");let out=[];
+ text.split(/
+/).forEach(par=>{if(par===""){out.push("");return}let words=par.split(/\s+/),line="";
+ words.forEach(w=>{if((line+" "+w).trim().length>max){if(line)out.push(line);line=w}else line=(line+" "+w).trim()});
+ if(line)out.push(line)});
+ return out;
+}
+async function buildPDF(d){
+ const W=612,H=792,scale=2,pages=[];
+ function makeCanvas(){const c=document.createElement("canvas");c.width=W*scale;c.height=H*scale;const ctx=c.getContext("2d");ctx.scale(scale,scale);ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);ctx.fillStyle="#111827";return {c,ctx};}
+ function addReportPage(){
+  const {c,ctx}=makeCanvas();let y=42;ctx.textAlign="center";ctx.font="bold 18px Arial";ctx.fillText("WEEKLY VEHICLE REPORT",W/2,y);y+=15;ctx.font="8px Arial";ctx.fillText("Weekly Vehicle Inspection",W/2,y);y+=25;ctx.textAlign="left";
+  ctx.strokeRect(38,y,536,28);ctx.beginPath();ctx.moveTo(220,y);ctx.lineTo(220,y+28);ctx.moveTo(405,y);ctx.lineTo(405,y+28);ctx.stroke();ctx.font="bold 8px Arial";ctx.fillText("Week Of:",45,y+17);ctx.font="9px Arial";ctx.fillText(displayDate(d.week),92,y+17);ctx.font="bold 8px Arial";ctx.fillText("Mileage:",230,y+17);ctx.font="9px Arial";ctx.fillText(d.mileage||"",275,y+17);ctx.font="bold 8px Arial";ctx.fillText("Driver:",415,y+17);ctx.font="9px Arial";ctx.fillText(d.driver||"",448,y+17);y+=45;
+  ctx.font="bold 11px Arial";ctx.fillText("WEEKLY INSPECTION",38,y);y+=15;ctx.strokeRect(38,y,536,24);ctx.beginPath();ctx.moveTo(175,y);ctx.lineTo(175,y+24);ctx.moveTo(255,y);ctx.lineTo(255,y+24);ctx.stroke();ctx.font="bold 8px Arial";ctx.fillText("INSPECTION ITEM",45,y+15);ctx.fillText("STATUS",195,y+15);ctx.fillText("DETAILS / NOTES",270,y+15);y+=24;
+  d.items.forEach(item=>{const lines=wrap(item.details||"",55).slice(0,5);const h=Math.max(32,12+lines.length*10);ctx.strokeRect(38,y,536,h);ctx.beginPath();ctx.moveTo(175,y);ctx.lineTo(175,y+h);ctx.moveTo(255,y);ctx.lineTo(255,y+h);ctx.stroke();ctx.font="bold 8px Arial";ctx.fillText(item.title,45,y+15);ctx.font="8px Arial";ctx.fillText(item.status,190,y+15);lines.forEach((l,j)=>ctx.fillText(l.slice(0,55),265,y+13+j*10));y+=h;});
+  y+=15;ctx.font="bold 11px Arial";ctx.fillText("ADDITIONAL COMMENTS / MAINTENANCE NEEDED",38,y);y+=8;const notes=wrap(d.additional||"",92).slice(0,12);const nh=Math.max(85,notes.length*11+14);ctx.strokeRect(38,y,536,nh);ctx.font="8px Arial";notes.forEach((l,j)=>ctx.fillText(l,45,y+14+j*11));y+=nh+18;ctx.beginPath();ctx.moveTo(38,y);ctx.lineTo(300,y);ctx.moveTo(330,y);ctx.lineTo(574,y);ctx.stroke();ctx.fillText("Driver: "+(d.signature||""),45,y+13);ctx.fillText("Week Of: "+displayDate(d.week),337,y+13);pages.push(c.toDataURL("image/jpeg",.82));
+ }
+ addReportPage();
+ for(let i=0;i<d.photos.length;i++){
+  const p=d.photos[i],img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p.src});
+  const {c,ctx}=makeCanvas();ctx.textAlign="left";ctx.font="bold 15px Arial";ctx.fillText("PHOTO DOCUMENTATION",38,42);ctx.font="bold 10px Arial";ctx.fillText("Photo "+(i+1)+" — "+p.category,38,60);ctx.font="9px Arial";const desc=wrap(p.description||"",90).slice(0,3);desc.forEach((l,j)=>ctx.fillText(l,38,76+j*11));
+  const top=115,maxW=536,maxH=620,ratio=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight),dw=img.naturalWidth*ratio,dh=img.naturalHeight*ratio;ctx.drawImage(img,(W-dw)/2,top+(maxH-dh)/2,dw,dh);pages.push(c.toDataURL("image/jpeg",.84));
+ }
+ const objects={1:`<< /Type /Catalog /Pages 2 0 R >>`};const kids=[];let id=3;
+ for(let i=0;i<pages.length;i++){const pageId=id++,imgId=id++,contentId=id++;kids.push(`${pageId} 0 R`);const jpeg=atob(pages[i].split(",")[1]);const stream=`q
+${W} 0 0 ${H} 0 0 cm
+/Im${i} Do
+Q`;objects[pageId]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im${i} ${imgId} 0 R >> >> /Contents ${contentId} 0 R >>`;objects[imgId]=`<< /Type /XObject /Subtype /Image /Width ${W*scale} /Height ${H*scale} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>
+stream
+${jpeg}
+endstream`;objects[contentId]=`<< /Length ${stream.length} >>
+stream
+${stream}
+endstream`;}
+ objects[2]=`<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${pages.length} >>`;
+ let pdf="%PDF-1.4
+",offsets=[0];const maxId=id-1;for(let n=1;n<=maxId;n++){offsets[n]=pdf.length;pdf+=n+" 0 obj
+"+objects[n]+"
+endobj
+";}const xref=pdf.length;pdf+=`xref
+0 ${maxId+1}
+0000000000 65535 f 
+`;for(let n=1;n<=maxId;n++)pdf+=String(offsets[n]).padStart(10,"0")+" 00000 n 
+";pdf+=`trailer
+<< /Size ${maxId+1} /Root 1 0 R >>
+startxref
+${xref}
+%%EOF`;return new Blob([pdf],{type:"application/pdf"});
+}
+function validate(d){if(!d.week||!d.driver){setStatus("Please enter Week Of and Driver.");return false}return true}
+async function savePDF(){
+ const d=getData();if(!validate(d))return;const blob=await buildPDF(d);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename(d);a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);setStatus("PDF saved as "+filename(d));
+}
+async function createAndEmail(){
+ const d=getData();if(!validate(d))return;const blob=await buildPDF(d);const file=new File([blob],filename(d),{type:"application/pdf"});
+ if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({title:"Weekly Vehicle Report",text:"Weekly Vehicle Report - "+displayDate(d.week)+" - "+d.driver,files:[file]});setStatus("PDF ready to email/share.");return}catch(e){if(e.name==="AbortError")return}}
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename(d);a.click();setStatus("PDF downloaded as "+filename(d)+". Attach it to your email.");setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+function clearForm(){
+ if(confirm("Clear the entire weekly report?")){document.querySelectorAll("input,textarea").forEach(e=>e.value="");photos.length=0;pendingPhotos.length=0;renderPhotos();renderPendingPhotos();showTab("inspection");items.forEach(([t,k])=>{selections[k]="";["yes","no","other"].forEach(x=>document.getElementById(k+"_"+x).classList.remove("selected"))});setStatus("")}
+}
+</script>
+</body>
+</html>
